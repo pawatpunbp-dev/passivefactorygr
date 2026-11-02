@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>[hidden]{display:none!important}</style>
+<title>Passive Factory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@500;600&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout concept: conveyor-belt factory. Sentence parts are colour-coded blocks (S blue, V green, O orange) assembled station by station. */
+:root{
+  --bg:#EDF1F5; --card:#FFFFFF; --ink:#14202B; --soft:#53606D; --line:#CBD5DF;
+  --s:#2563EB; --s-bg:#DBE7FF; --v:#12803D; --v-bg:#D5F2E0; --o:#C25E00; --o-bg:#FFE6CC;
+  --hz:#F2C21A; --ok:#12803D; --ok-bg:#D5F2E0; --bad:#B42318; --bad-bg:#FDE1DE;
+  --disp:'Bricolage Grotesque','Sarabun',system-ui,sans-serif; --body:'Sarabun',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1720; --card:#18232F; --ink:#E8EEF4; --soft:#9AA8B6; --line:#2D3C4B;
+  --s:#7FA8FF; --s-bg:#1E3158; --v:#5BD48A; --v-bg:#173A29; --o:#FFAA5C; --o-bg:#4A2D10;
+  --ok:#5BD48A; --ok-bg:#173A29; --bad:#FF8A7E; --bad-bg:#4A1D19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1720; --card:#18232F; --ink:#E8EEF4; --soft:#9AA8B6; --line:#2D3C4B;
+  --s:#7FA8FF; --s-bg:#1E3158; --v:#5BD48A; --v-bg:#173A29; --o:#FFAA5C; --o-bg:#4A2D10;
+  --ok:#5BD48A; --ok-bg:#173A29; --bad:#FF8A7E; --bad-bg:#4A1D19; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55;padding-block:0 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;max-width:760px;margin:0 auto;padding:14px 0 0}
+.brand{font:800 18px var(--disp);color:var(--ink);text-decoration:none}
+.who{font:600 13px var(--mono);padding:6px 10px;border-radius:999px;background:var(--hz);color:#14202B;text-decoration:none;max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app{max-width:760px;margin:0 auto}
+.eyebrow{font:600 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+h1{font:800 clamp(30px,7vw,44px)/1.05 var(--disp);margin:8px 0 6px;letter-spacing:-.01em}
+h1.lh{font-size:clamp(26px,6vw,36px)}
+.hero{padding:20px 0 6px}
+.sub{color:var(--soft);margin:0 0 12px}
+.belt{height:10px;margin:10px 0 16px;border-radius:6px;background:repeating-linear-gradient(135deg,var(--hz) 0 12px,var(--ink) 12px 24px);opacity:.9}
+.crumb{padding:16px 0 4px}.crumb a{color:var(--soft);font-weight:600;text-decoration:none}
+.sec{font:800 20px var(--disp);margin:26px 0 10px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:20px;margin:0 0 14px}
+.card h2{font:800 22px/1.2 var(--disp);margin:0 0 4px}
+.card h3{font:800 17px var(--disp);margin:0 0 6px}
+.th{color:var(--soft);margin:0 0 14px}
+.soft{color:var(--soft)}
+.hint{color:var(--soft);font-size:15px;margin:10px 0 0}
+.tag{display:inline-block;font:600 12px var(--mono);letter-spacing:.08em;padding:3px 8px;border-radius:6px;background:var(--ink);color:var(--bg);margin-bottom:8px}
+nav.st{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+nav.st button{font:600 14px var(--body);min-height:44px;padding:0 14px;border-radius:999px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+nav.st button[aria-current="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+nav.st button.done::after{content:" ✓";color:var(--ok)}
+nav.st button[aria-current="true"].done::after{color:var(--bg)}
+.blk{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:10px;font:600 18px var(--body);margin:4px 4px 4px 0;border:2px solid transparent}
+.blk.S{background:var(--s-bg);color:var(--s);border-color:var(--s)} .blk.V{background:var(--v-bg);color:var(--v);border-color:var(--v)} .blk.O{background:var(--o-bg);color:var(--o);border-color:var(--o)} .blk.X{background:var(--card);color:var(--ink);border-color:var(--line)}
+button.blk{cursor:pointer} button.blk:disabled{opacity:.35;cursor:default}
+.slots{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;min-height:52px;padding:8px;border:2px dashed var(--line);border-radius:12px}
+.slot{min-width:64px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:2px dashed var(--line);color:var(--soft);font:600 14px var(--mono)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{font:700 16px var(--body);min-height:46px;padding:0 20px;border-radius:12px;border:0;background:var(--ink);color:var(--bg);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line)}
+.btn:disabled{opacity:.4;cursor:default}
+a:focus-visible,.btn:focus-visible,nav.st button:focus-visible,.blk:focus-visible,select:focus-visible,input:focus-visible,.mini button:focus-visible,summary:focus-visible{outline:3px solid var(--s);outline-offset:2px}
+select,input[type=text],input[type=number]{font:600 17px var(--body);min-height:46px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);padding:0 10px;max-width:100%}
+input[type=text]{width:100%}
+.fb{min-height:26px;margin:8px 0 0;font-weight:600}
+.fb.ok{color:var(--ok)} .fb.bad{color:var(--bad)}
+.pair{display:grid;gap:10px;margin:8px 0 14px}
+.pair>div{padding:12px 14px;border-radius:12px;background:var(--bg)}
+.pair b{display:block;font:600 12px var(--mono);letter-spacing:.08em;color:var(--soft);margin-bottom:4px;text-transform:uppercase}
+.det{font:700 20px var(--disp)} .det u{text-decoration-color:var(--bad);text-underline-offset:4px;text-decoration-thickness:3px}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.steps li{display:grid;gap:6px;padding:12px 14px;border-radius:12px;border:2px solid var(--line)}
+.steps li.cur{border-color:var(--ink)} .steps li.fin{border-color:var(--ok);background:var(--ok-bg)} .steps li.lock{opacity:.45}
+.steps .q{font-weight:700}
+.out{font:800 24px/1.3 var(--disp);padding:14px;border-radius:12px;background:var(--bg);margin:12px 0;min-height:60px}
+.formula{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font:600 15px var(--mono)}
+.mini{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.mini button{font:700 13px var(--mono);min-height:44px;padding:0 12px;border-radius:8px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.mini button[aria-current="true"]{background:var(--s);color:#fff;border-color:var(--s)}
+.ref{margin:6px 0 0;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:4px 16px}
+.ref summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center}
+.tbl{overflow-x:auto}
+.tbl table{width:100%;border-collapse:collapse;font-size:15px;min-width:520px;background:var(--card)}
+.tbl th,.tbl td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr.hi td{background:var(--s-bg)}
+.mono{font-family:var(--mono);font-size:14px}
+.idgrid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+.idgrid .wide{grid-column:1/-1}
+.field{display:grid;gap:4px;font-weight:600;font-size:14px;color:var(--soft)}
+.map{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.lvl{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;background:var(--card);border:1.5px solid var(--line);color:var(--ink);text-decoration:none;min-height:64px}
+.lvl .n{flex:none;width:40px;height:40px;border-radius:10px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font:800 18px var(--disp)}
+.lvl .t{flex:1;min-width:0;display:grid}.lvl .t small{color:var(--soft)}
+.lvl .sc{font:600 14px var(--mono);color:var(--soft)}
+.lvl.boss .n{background:var(--hz);color:#14202B}
+.report .rtop{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.stamp{font:600 13px var(--mono);color:var(--soft)}
+.rwho{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin:12px 0}.rwho .wide{grid-column:1/-1}
+.big{display:flex;align-items:baseline;gap:8px;margin:6px 0}.big span{font:800 56px/1 var(--disp)}.big small{font:600 15px var(--mono);color:var(--soft)}
+.rk{margin:0 0 12px}
+.srow{display:grid;grid-template-columns:150px 1fr auto;gap:10px;align-items:center;padding:5px 0;font-size:15px}
+.bar{height:10px;border-radius:6px;background:var(--bg);overflow:hidden}.bar i{display:block;height:100%;background:var(--s)}
+@media (max-width:480px){.idgrid,.rwho{grid-template-columns:1fr 1fr}.srow{grid-template-columns:1fr auto}.srow .bar{grid-column:1/-1;order:3}}
+@media (max-width:560px){
+ .tbl table{min-width:0}.tbl thead{display:none}.tbl table,.tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
+ .tbl tr{border:1.5px solid var(--line);border-radius:12px;margin:0 0 10px;padding:6px 4px;background:var(--card)}
+ .tbl tr.hi{border-color:var(--s)}.tbl td{border:0;padding:4px 10px}
+ .tbl td[data-l]::before{content:attr(data-l);display:block;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}}
+</style>
+</head>
+<body>
+<div class="top"><a class="brand" href="#home">Passive Factory</a><a class="who" id="who" href="#score" hidden></a></div>
+<main id="app"></main>
+<script>
+var LV=[
+{id:'L1',n:1,tense:'Present Simple Tense',short:'Present Simple',th:'ปัจจุบันกาลธรรมดา',act:'S + V1(s) + O',pas:'O + am/is/are + V3 + (by + S)',ex:'Rice is grown by farmers.',
+ prep:[['make',['made','maked','making']],['grow',['grown','grew','growed']],['write',['written','wrote','writed']],['eat',['eaten','ate','eated']]],
+ recall:{tiles:['S','V1(s)','O'],q:'ประธานเป็น he / she / it / ชื่อคนเดียว กริยา V1 ต้องเติมอะไรที่ท้าย (Mom cook___ rice.)',ans:['s','es'],okmsg:'ถูก! เติม s/es'},
+ formula:{beOpts:['am/is/are','was/were','will be'],beAns:'am/is/are',exA:[['Farmers','S'],['grow','V'],['rice.','O']],exP:[['Rice','O'],['is','X'],['grown','V'],['by','X'],['farmers.','S']]},
+ convert:[
+  {a:['Workers','make','shoes.'],s:'Shoes',beOpts:['is','are','am'],be:'are',v3opts:['make','makes','made'],v3:'made',ag:'workers'},
+  {a:['Farmers','grow','rice.'],s:'Rice',beOpts:['is','are','am'],be:'is',v3opts:['grow','grows','grown'],v3:'grown',ag:'farmers'}],
+ build:{
+  A:{act:'Monks clean temples.',words:['Temples','are','cleaned','by','monks.']},
+  B:{act:'Mom cooks soup.',pre:'Soup',s1:{opts:['is','are','was'],ans:'is'},s2:{opts:['cook','cooked','cooking'],ans:'cooked'},post:'by Mom.',full:'Soup is cooked by Mom.'},
+  C:{act:'Thais eat mangoes.',ans:'Mangoes are eaten by Thais.'},
+  D:{act:'Tom writes letters.',ans:'Letters are written by Tom.'}},
+ detect:{opts:['ใช้ V1 แทน V3','ลืมใส่ be','รูป be ไม่ตรงกับประธาน'],items:[
+  {t:'The letter is <u>write</u> by Tom.',a:0,fix:'The letter is written by Tom.'},
+  {t:'The cake <u>baked</u> by Mom.',a:1,fix:'The cake is baked by Mom.'},
+  {t:'The shoes <u>is</u> made by workers.',a:2,fix:'The shoes are made by workers.'}]}},
+{id:'L2',n:2,tense:'Past Simple Tense',short:'Past Simple',th:'อดีตกาลธรรมดา',act:'S + V2 + O',pas:'O + was/were + V3 + (by + S)',ex:'The bridge was built by workers.',
+ prep:[['build',['built','builded','building']],['break',['broken','broke','breaked']],['steal',['stolen','stole','stealed']],['take',['taken','took','taked']]],
+ recall:{tiles:['S','V2','O'],q:'เล่าเรื่องในอดีต กริยาปกติ (regular verb) เติมอะไรที่ท้าย (Tom watch___ TV yesterday.)',ans:['ed','d'],okmsg:'ถูก! เติม ed / d'},
+ formula:{beOpts:['am/is/are','was/were','will be'],beAns:'was/were',exA:[['Workers','S'],['built','V'],['the bridge.','O']],exP:[['The bridge','O'],['was','X'],['built','V'],['by','X'],['workers.','S']]},
+ convert:[
+  {a:['Workers','built','the bridge.'],s:'The bridge',beOpts:['was','were','is'],be:'was',v3opts:['build','built','builded'],v3:'built',ag:'workers'},
+  {a:['Students','painted','the walls.'],s:'The walls',beOpts:['was','were','are'],be:'were',v3opts:['paint','paints','painted'],v3:'painted',ag:'students'}],
+ build:{
+  A:{act:'Mom cooked dinner.',words:['Dinner','was','cooked','by','Mom.']},
+  B:{act:'Tom broke the window.',pre:'The window',s1:{opts:['was','were','is'],ans:'was'},s2:{opts:['break','broke','broken'],ans:'broken'},post:'by Tom.',full:'The window was broken by Tom.'},
+  C:{act:'Anna wrote a letter.',ans:'A letter was written by Anna.'},
+  D:{act:'Thieves stole the bike.',ans:'The bike was stolen by thieves.'}},
+ detect:{opts:['ใช้ V1 / V2 แทน V3','ลืมใส่ be','รูป be ไม่ตรงกับประธาน'],items:[
+  {t:'The cake was <u>bake</u> by Mom.',a:0,fix:'The cake was baked by Mom.'},
+  {t:'The window <u>broken</u> by Tom.',a:1,fix:'The window was broken by Tom.'},
+  {t:'The walls <u>was</u> painted by students.',a:2,fix:'The walls were painted by students.'}]}},
+{id:'L3',n:3,tense:'Future Simple Tense (will)',short:'Future Simple',th:'อนาคตกาลธรรมดา',act:'S + will + V1 + O',pas:'O + will be + V3 + (by + S)',ex:'Meals will be cooked by robots.',
+ prep:[['teach',['taught','teached','teaching']],['buy',['bought','buyed','buying']],['see',['seen','saw','seed']],['do',['done','did','doed']]],
+ recall:{tiles:['S','will','V1','O'],q:'บอกเหตุการณ์ในอนาคต ต้องใส่คำช่วยอะไรหน้ากริยา (Mom ___ cook rice tomorrow.)',ans:['will'],okmsg:'ถูก! will + V1'},
+ formula:{beOpts:['am/is/are','will be','will'],beAns:'will be',exA:[['Robots','S'],['will cook','V'],['meals.','O']],exP:[['Meals','O'],['will be','X'],['cooked','V'],['by','X'],['robots.','S']]},
+ convert:[
+  {a:['People','will plant','trees.'],s:'Trees',beOpts:['will be','will','will been'],be:'will be',v3opts:['plant','planted','planting'],v3:'planted',ag:'people'},
+  {a:['Robots','will clean','the house.'],s:'The house',beOpts:['will be','will is','will'],be:'will be',v3opts:['clean','cleaned','cleaning'],v3:'cleaned',ag:'robots'}],
+ build:{
+  A:{act:'Robots will cook meals.',words:['Meals','will','be','cooked','by','robots.']},
+  B:{act:'Teachers will check the tests.',pre:'The tests',s1:{opts:['will be','will','will been'],ans:'will be'},s2:{opts:['check','checked','checking'],ans:'checked'},post:'by teachers.',full:'The tests will be checked by teachers.'},
+  C:{act:'Scientists will build robots.',ans:'Robots will be built by scientists.'},
+  D:{act:'Students will visit the museum.',ans:'The museum will be visited by students.'}},
+ detect:{opts:['ใช้ V1 แทน V3','ลืม be หลัง will','ใช้ is/are หลัง will'],items:[
+  {t:'The meals will be <u>cook</u> by robots.',a:0,fix:'The meals will be cooked by robots.'},
+  {t:'The house will <u>cleaned</u> by robots.',a:1,fix:'The house will be cleaned by robots.'},
+  {t:'The tests will <u>is</u> checked by teachers.',a:2,fix:'The tests will be checked by teachers.'}]}},
+{id:'L4',n:4,tense:'Present Continuous Tense',short:'Present Continuous',th:'ปัจจุบันกาลต่อเนื่อง',act:'S + am/is/are + V-ing + O',pas:'O + am/is/are + being + V3 + (by + S)',ex:'Soup is being cooked by Mom.',
+ prep:[['paint',['painted','paint','painting']],['clean',['cleaned','clean','cleaning']],['bring',['brought','bringed','bringing']],['hold',['held','holded','holding']]],
+ recall:{tiles:['S','am/is/are','V-ing','O'],q:'กริยาที่กำลังเกิดขึ้น ต้องเติมอะไรที่ท้าย V1 (Mom is cook___ rice now.)',ans:['ing'],okmsg:'ถูก! V-ing'},
+ formula:{beOpts:['am/is/are being','am/is/are','was/were being'],beAns:'am/is/are being',exA:[['Workers','S'],['are building','V'],['a bridge.','O']],exP:[['A bridge','O'],['is being','X'],['built','V'],['by','X'],['workers.','S']]},
+ convert:[
+  {a:['Workers','are building','a bridge.'],s:'A bridge',beOpts:['is being','are being','am being'],be:'is being',v3opts:['build','built','building'],v3:'built',ag:'workers'},
+  {a:['Workers','are painting','the walls.'],s:'The walls',beOpts:['is being','are being','am being'],be:'are being',v3opts:['paint','painted','painting'],v3:'painted',ag:'workers'}],
+ build:{
+  A:{act:'Mom is cooking dinner.',words:['Dinner','is','being','cooked','by','Mom.']},
+  B:{act:'Students are cleaning the room.',pre:'The room',s1:{opts:['is being','are being','is'],ans:'is being'},s2:{opts:['clean','cleaned','cleaning'],ans:'cleaned'},post:'by students.',full:'The room is being cleaned by students.'},
+  C:{act:'Tom is writing a letter.',ans:'A letter is being written by Tom.'},
+  D:{act:'Farmers are growing rice.',ans:'Rice is being grown by farmers.'}},
+ detect:{opts:['ใช้ V1 แทน V3','ใช้ been แทน being','รูป be ไม่ตรงกับประธาน'],items:[
+  {t:'The soup is being <u>cook</u> by Mom.',a:0,fix:'The soup is being cooked by Mom.'},
+  {t:'The room is <u>been</u> cleaned by students.',a:1,fix:'The room is being cleaned by students.'},
+  {t:'The walls <u>is</u> being painted by workers.',a:2,fix:'The walls are being painted by workers.'}]}},
+{id:'L5',n:5,tense:'Present Perfect Tense',short:'Present Perfect',th:'ปัจจุบันกาลสมบูรณ์',act:'S + have/has + V3 + O',pas:'O + have/has been + V3 + (by + S)',ex:'The cup has been broken by Anna.',
+ prep:[['break',['broken','broke','breaked']],['write',['written','wrote','writed']],['give',['given','gave','gived']],['speak',['spoken','spoke','speaked']]],
+ recall:{tiles:['S','have/has','V3','O'],q:'ประธานเอกพจน์ (Tom) ใช้คำช่วยตัวไหน (Tom ___ written a letter.)',ans:['has'],okmsg:'ถูก! Tom + has'},
+ formula:{beOpts:['have/has been','have/has','am/is/are being'],beAns:'have/has been',exA:[['Workers','S'],['have built','V'],['the bridge.','O']],exP:[['The bridge','O'],['has been','X'],['built','V'],['by','X'],['workers.','S']]},
+ convert:[
+  {a:['Workers','have built','the bridge.'],s:'The bridge',beOpts:['has been','have been','is been'],be:'has been',v3opts:['build','builds','built'],v3:'built',ag:'workers'},
+  {a:['Tom','has written','letters.'],s:'Letters',beOpts:['has been','have been','had been'],be:'have been',v3opts:['write','wrote','written'],v3:'written',ag:'Tom'}],
+ build:{
+  A:{act:'Mom has cooked dinner.',words:['Dinner','has','been','cooked','by','Mom.']},
+  B:{act:'Students have cleaned the room.',pre:'The room',s1:{opts:['has been','have been','is being'],ans:'has been'},s2:{opts:['clean','cleaned','cleaning'],ans:'cleaned'},post:'by students.',full:'The room has been cleaned by students.'},
+  C:{act:'Anna has broken the cup.',ans:'The cup has been broken by Anna.'},
+  D:{act:'Farmers have grown rice.',ans:'Rice has been grown by farmers.'}},
+ detect:{opts:['ใช้ V1 / V2 แทน V3','ลืม been','have/has ไม่ตรงกับประธาน'],items:[
+  {t:'The bridge has been <u>build</u> by workers.',a:0,fix:'The bridge has been built by workers.'},
+  {t:'The cup has <u>broken</u> by Anna.',a:1,fix:'The cup has been broken by Anna.'},
+  {t:'The letters <u>has</u> been written by Tom.',a:2,fix:'The letters have been written by Tom.'}]}}
+];
+var BOSS=[
+ {tn:'Present Simple',a:'Teachers check the homework.',ans:['The homework is checked by teachers.']},
+ {tn:'Present Simple',a:'Thai people eat sticky rice.',ans:['Sticky rice is eaten by Thai people.']},
+ {tn:'Past Simple',a:'Thieves stole the bike.',ans:['The bike was stolen by thieves.']},
+ {tn:'Past Simple',a:'Children broke the windows.',ans:['The windows were broken by children.']},
+ {tn:'Future Simple',a:'Robots will clean the streets.',ans:['The streets will be cleaned by robots.']},
+ {tn:'Future Simple',a:'Scientists will invent new machines.',ans:['New machines will be invented by scientists.']},
+ {tn:'Present Continuous',a:'The chef is cooking noodles.',ans:['Noodles are being cooked by the chef.']},
+ {tn:'Present Continuous',a:'Workers are repairing the road.',ans:['The road is being repaired by workers.']},
+ {tn:'Present Perfect',a:'Tom has finished the project.',ans:['The project has been finished by Tom.']},
+ {tn:'Present Perfect',a:'Students have painted the walls.',ans:['The walls have been painted by students.']}
+];
+
+(function(){
+var KEY='passive-factory-v1';
+function $(s,r){return (r||document).querySelector(s);}
+function el(t,c,h){var e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function shuf(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function norm(s){return String(s).toLowerCase().replace(/[.,!?]/g,' ').replace(/\b(the|a|an)\b/g,' ').replace(/\s+/g,' ').trim();}
+function match(inp,answers){var n=norm(inp);for(var i=0;i<answers.length;i++){if(norm(answers[i])===n)return true;var nb=norm(answers[i]).replace(/ by .*$/,'');if(nb===n)return true;}return false;}
+var store={get:function(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}},del:function(k){try{localStorage.removeItem(k);}catch(e){}}};
+var S=store.get(KEY,null)||{name:'',cls:'',no:'',keys:{},done:{},help:0};
+function save(){store.set(KEY,S);}
+var HAS_TTS=('speechSynthesis' in window)&&typeof window.SpeechSynthesisUtterance!=='undefined';
+function speak(t){if(!HAS_TTS)return;try{var u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=.85;window.speechSynthesis.cancel();window.speechSynthesis.speak(u);}catch(e){}}
+function maxOf(L){return L.prep.length+2+1+L.convert.length*5+4+L.detect.items.length;}
+function scoreOf(prefix){var n=0;for(var k in S.keys){if(k.indexOf(prefix+'.')===0&&S.keys[k]===1)n++;}return n;}
+function totals(){var got=0,max=0;LV.forEach(function(L){got+=scoreOf(L.id);max+=maxOf(L);});got+=scoreOf('B');max+=BOSS.length;return {got:got,max:max};}
+function first(key,ok){if(S.keys[key]===undefined){S.keys[key]=ok?1:0;save();paintTop();}}
+function levelDone(L){var c=0;for(var i=0;i<6;i++)if(S.done[L.id+'.'+i])c++;return c;}
+function rank(p){return p>=90?'Master Engineer':p>=80?'Engineer':p>=60?'Operator':'Apprentice';}
+function stamp(){var d=new Date(),p=function(n){return n<10?'0'+n:n;};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());}
+var TIP={S:'S',V:'V',O:'O',X:'X'};
+function blocks(arr){return arr.map(function(b){return '<span class="blk '+b[1]+'">'+esc(b[0])+'</span>';}).join('');}
+function formulaTable(hi){var h='<div class="tbl"><table><thead><tr><th>Tense</th><th>Active</th><th>Passive</th></tr></thead><tbody>';
+  LV.forEach(function(L){h+='<tr'+(hi===L.id?' class="hi"':'')+'><td><b>'+esc(L.tense)+'</b><br><span class="soft">'+esc(L.th)+'</span></td><td class="mono" data-l="Active">'+esc(L.act)+'</td><td class="mono" data-l="Passive">'+esc(L.pas)+'<br><i>'+esc(L.ex)+'</i></td></tr>';});
+  return h+'</tbody></table></div>';}
+function helpPanel(hi){var d=el('details','ref','<summary>📋 ตารางสูตร Tense (กดดูได้ แต่จะนับว่าใช้ตัวช่วย)</summary>'+formulaTable(hi));var used=false;d.addEventListener('toggle',function(){if(d.open&&!used){used=true;S.help=(S.help||0)+1;save();paintTop();}});return d;}
+function paintTop(){var t=totals(),w=$('#who');if(S.name){w.hidden=false;w.textContent=S.name+' · '+t.got+'/'+t.max;}else w.hidden=true;}
+
+/* ---------- routing ---------- */
+var app=$('#app');
+function route(){var r=(location.hash||'#home').slice(1);if(r!=='home'&&!S.name){location.hash='#home';return;}
+  app.innerHTML='';window.scrollTo(0,0);
+  if(r==='home')home();else if(r==='score')score();else if(r==='boss')boss();else{var L=LV.filter(function(x){return x.id===r;})[0];if(L)level(L,0);else home();}
+  paintTop();}
+window.addEventListener('hashchange',route);
+
+/* ---------- home ---------- */
+function home(){
+  var t=totals(),p=el('div');
+  p.innerHTML='<section class="hero"><span class="eyebrow">M.3 · อ23102 · Grammar</span><h1>Passive Factory</h1><p class="sub">โรงงานประกอบประโยค passive: เริ่มจาก active ที่รู้จัก แล้วเปลี่ยนเป็น passive ทีละ Tense ทีละขั้น</p><div class="belt"></div></section>'+
+  '<form class="card" id="idf" autocomplete="off"><div class="idgrid"><label class="field wide">Name · ชื่อ-นามสกุล<input type="text" id="nm" maxlength="60" placeholder="ใส่ชื่อก่อนเริ่มเล่น"></label><label class="field">Class · ห้อง<input type="text" id="cl" maxlength="12" placeholder="เช่น ม.3/2"></label><label class="field">No. · เลขที่<input type="number" id="no" min="1" max="99" inputmode="numeric"></label></div><div class="row"><button class="btn" id="st" type="submit">'+(t.got>0?'เล่นต่อ':'Start Level 1')+'</button></div><p class="hint" id="hn">ใส่ชื่อให้ครบก่อนเริ่ม คะแนนเก็บในเครื่องนี้ นับจากคำตอบครั้งแรกเท่านั้น</p></form>'+
+  '<h2 class="sec">Production Line</h2><ol class="map" id="mp"></ol>'+
+  '<h2 class="sec">ตารางสูตร Tense</h2><p class="soft" style="margin:0 0 10px">ศึกษาได้ที่นี่ก่อนเล่น ระหว่างเล่นถ้ากดเปิดตารางจะนับว่าใช้ตัวช่วย</p>'+formulaTable()+
+  '<div class="card" style="margin-top:18px"><h3>วิธีเล่น</h3><p class="soft" style="margin:0">แต่ละระดับมี 6 สถานี: V3 Prep → Active → Formula → Convert → Build → Detective ตัวช่วยจะลดลงเรื่อยๆ ผ่านครบ 5 ระดับแล้วไปท้าทายด่าน Boss</p></div>';
+  app.appendChild(p);
+  $('#nm').value=S.name;$('#cl').value=S.cls;$('#no').value=S.no;
+  var map=$('#mp');
+  LV.forEach(function(L){var li=el('li','','<a class="lvl" href="#'+L.id+'"><span class="n">'+L.n+'</span><span class="t"><b>'+esc(L.tense)+'</b><small>'+esc(L.th)+' · '+levelDone(L)+'/6 สถานี</small></span><span class="sc">'+scoreOf(L.id)+'/'+maxOf(L)+'</span></a>');map.appendChild(li);});
+  map.appendChild(el('li','','<a class="lvl boss" href="#boss"><span class="n">★</span><span class="t"><b>Boss: Mixed Tenses</b><small>ผสมทุก Tense · พิมพ์ประโยค passive เอง</small></span><span class="sc">'+scoreOf('B')+'/'+BOSS.length+'</span></a>'));
+  map.appendChild(el('li','','<a class="lvl" href="#score"><span class="n">≡</span><span class="t"><b>Score Report</b><small>สรุปคะแนนส่งครู</small></span><span class="sc">'+t.got+'/'+t.max+'</span></a>'));
+  $('#idf').addEventListener('submit',function(e){e.preventDefault();var nm=$('#nm').value.trim();if(!nm){$('#hn').textContent='กรุณาใส่ชื่อก่อนเริ่มเล่น';$('#nm').focus();return;}S.name=nm;S.cls=$('#cl').value.trim();S.no=$('#no').value;save();location.hash='#L1';});
+}
+
+/* ---------- level ---------- */
+var STN=[['V3 Prep','เตรียม V3'],['Active','ทบทวน active'],['Formula','ค้นพบสูตร'],['Convert','แปลงทีละขั้น'],['Build','สร้างประโยค'],['Detective','หาจุดผิด']];
+function level(L,si){
+  var w=el('div');app.appendChild(w);
+  w.innerHTML='<div class="crumb"><a href="#home">← Home</a></div><span class="eyebrow">Level '+L.n+' of 5</span><h1 class="lh">'+esc(L.tense)+'</h1><p class="sub">'+esc(L.th)+'</p><div class="belt"></div><nav class="st" id="sn" aria-label="Stations"></nav><section class="card" id="stn"></section><div id="hp"></div>';
+  $('#hp').appendChild(helpPanel(L.id));
+  function nav(){var n=$('#sn');n.innerHTML='';STN.forEach(function(s,i){var b=el('button','',(i)+' '+s[0]);b.type='button';b.title=s[1];if(i===si)b.setAttribute('aria-current','true');if(S.done[L.id+'.'+i])b.classList.add('done');b.onclick=function(){si=i;nav();draw();};n.appendChild(b);});}
+  function fin(i){S.done[L.id+'.'+i]=true;save();}
+  function nextBtn(box,label){var r=el('div','row','<button class="btn" type="button">'+(label||'สถานีถัดไป →')+'</button>');r.firstChild.onclick=function(){fin(si);if(si<5){si++;nav();draw();window.scrollTo(0,0);}else location.hash='#'+(L.n<5?LV[L.n].id:'boss');};box.appendChild(r);}
+  function hd(box,tag,t,th){box.innerHTML='<span class="tag">STATION '+tag+'</span><h2>'+t+'</h2><p class="th">'+th+'</p>';}
+  function fbk(box){var f=el('p','fb');f.setAttribute('aria-live','polite');box.appendChild(f);return function(t,ok){f.textContent=t;f.className='fb '+(ok?'ok':'bad');};}
+  var K=function(s){return L.id+'.'+s;};
+  var V=[];
+  V[0]=function(b){hd(b,0,'V3 Prep','เลือกรูป V3 (กริยาช่องที่ 3) ของกริยาแต่ละตัว ก่อนสร้างประโยค passive');var f=fbk(b),left=L.prep.length;
+    L.prep.forEach(function(q,qi){var d=el('div','row','<span class="blk V" style="min-width:96px">'+esc(q[0])+'</span><span>→ V3 =</span>');shuf(q[1]).forEach(function(o){var bt=el('button','blk X',esc(o));bt.type='button';bt.onclick=function(){var ok=o===q[1][0];first(K('prep'+qi),ok);if(ok){d.querySelectorAll('button').forEach(function(x){x.disabled=true;});bt.className='blk V';left--;f(left?'ถูก! เหลืออีก '+left+' คำ':'ครบแล้ว',true);if(!left)nextBtn(b);}else f('ยังไม่ใช่ ลองใหม่',false);};d.appendChild(bt);});b.insertBefore(d,b.lastChild);});};
+  V[1]=function(b){hd(b,1,'Recall: Active','เรียงสูตร active ของ '+esc(L.short)+' ให้ถูกต้อง แล้วตอบคำถามเรื่องรูปกริยา');
+    var want=L.recall.tiles,got=[],bank=shuf(want);var cls=function(w){return w==='S'?'S':w==='O'?'O':'V';};
+    b.insertAdjacentHTML('beforeend','<div class="slots" id="sl"></div><div id="bk"></div>');var f=fbk(b);
+    function paint(){var sl=$('#sl',b);sl.innerHTML='';for(var i=0;i<want.length;i++){sl.appendChild(el('span',got[i]?'blk '+cls(got[i]):'slot',esc(got[i]||String(i+1))));}
+      var bk=$('#bk',b);bk.innerHTML='';bank.forEach(function(w){var bt=el('button','blk X',esc(w));bt.type='button';bt.disabled=got.indexOf(w)>-1;bt.onclick=function(){got.push(w);paint();if(got.length===want.length){var ok=got.join('|')===want.join('|');first(K('rc1'),ok);if(ok){f('ถูก! '+want.join(' + '),true);part2();}else{f('ยังไม่ถูก ลองเรียงใหม่',false);setTimeout(function(){got=[];paint();},700);}}};bk.appendChild(bt);});}
+    function part2(){var d=el('div','','<p style="margin:14px 0 4px"><b>'+esc(L.recall.q)+'</b></p><input type="text" id="t1" maxlength="16" aria-label="answer" autocomplete="off"><div class="row"><button class="btn" type="button" id="c1">Check</button></div>');b.appendChild(d);
+      $('#c1',b).onclick=function(){var v=$('#t1',b).value.trim().toLowerCase().replace(/[^a-z]/g,'');var ok=L.recall.ans.indexOf(v)>-1;first(K('rc2'),ok);f(ok?L.recall.okmsg:'ลองคิดใหม่อีกครั้ง',ok);if(ok){$('#c1',b).disabled=true;nextBtn(b);}};}
+    paint();};
+  V[2]=function(b){hd(b,2,'Discover the Formula','ดูคู่ประโยค แล้วเติมสูตร passive ของ '+esc(L.short)+' เอง');
+    b.insertAdjacentHTML('beforeend','<div class="pair"><div><b>Active</b>'+blocks(L.formula.exA)+'</div><div><b>Passive</b>'+blocks(L.formula.exP)+'</div></div><div class="formula" id="fm"></div>');
+    var spec=[['ประธานใหม่คือ?',['S เดิม','O เดิม','V เดิม'],'O เดิม'],['ส่วนของ be / ตัวช่วย',L.formula.beOpts,L.formula.beAns],['รูปกริยาหลัก',['V1','V2','V3'],'V3'],['ตามด้วย',['by + S','by + O','to + S'],'by + S']];
+    var fm=$('#fm',b);spec.forEach(function(s,i){var sel=el('select','','<option value="">'+s[0]+'</option>'+shuf(s[1]).map(function(o){return '<option>'+esc(o)+'</option>';}).join(''));sel.id='sel'+i;sel.setAttribute('aria-label',s[0]);fm.appendChild(sel);if(i<3)fm.appendChild(el('span','','+'));});
+    b.appendChild(el('div','row','<button class="btn" type="button" id="ck">Check formula</button>'));var f=fbk(b);
+    $('#ck',b).onclick=function(){var bad=[];spec.forEach(function(s,i){if($('#sel'+i,b).value!==s[2])bad.push(i+1);});var ok=!bad.length;first(K('fm'),ok);if(ok){f('ถูกทั้งหมด! '+L.pas,true);$('#ck',b).disabled=true;nextBtn(b);}else f('ช่องที่ '+bad.join(', ')+' ยังไม่ถูก ดูตัวอย่างอีกครั้ง',false);};};
+  V[3]=function(b){var idx=0;
+    function run(){var it=L.convert[idx];hd(b,3,'Convert Step by Step','แปลง active เป็น passive ทีละขั้น ประโยค ('+(idx+1)+'/'+L.convert.length+') จะประกอบขึ้นด้านล่าง');
+      b.insertAdjacentHTML('beforeend','<div class="pair"><div><b>Active</b><span class="blk S">'+esc(it.a[0])+'</span><span class="blk V">'+esc(it.a[1])+'</span><span class="blk O">'+esc(it.a[2])+'</span></div></div><div class="out" id="out" aria-live="polite">…</div><ol class="steps" id="ol"></ol>');
+      var parts=[],si2=0,obj=it.a[2].replace('.',''),Ag=it.ag.charAt(0).toUpperCase()+it.ag.slice(1);
+      var steps=[{q:'① กรรม (O) คือคำไหน',o:[it.a[0],it.a[1],obj],a:obj,add:function(){parts.push('<span class="blk O">'+esc(it.s)+'</span>');}},
+        {q:'② ประธานใหม่ (O ย้ายมาอยู่หน้า) คือ',o:[it.s,Ag,it.a[1]],a:it.s},
+        {q:'③ เลือก be ให้ตรงกับ Tense และประธานใหม่ ('+it.s+')',o:it.beOpts,a:it.be,add:function(){parts.push('<span class="blk X">'+esc(it.be)+'</span>');}},
+        {q:'④ เปลี่ยนกริยาเป็น V3',o:it.v3opts,a:it.v3,add:function(){parts.push('<span class="blk V">'+esc(it.v3)+'</span>');}},
+        {q:'⑤ ใส่ผู้กระทำเดิม',o:['by '+it.ag,'to '+it.ag,'of '+it.ag],a:'by '+it.ag,add:function(){parts.push('<span class="blk X">by</span><span class="blk S">'+esc(it.ag)+'.</span>');}}];
+      var ol=$('#ol',b);
+      function draw2(){ol.innerHTML='';steps.forEach(function(s,i){var li=el('li',i<si2?'fin':i===si2?'cur':'lock','<span class="q">'+esc(s.q)+'</span>');
+        if(i===si2){var r=el('div','row');shuf(s.o).forEach(function(o){var bt=el('button','blk X',esc(o));bt.type='button';bt.onclick=function(){var ok=o===s.a;first(K('cv'+idx+'_'+i),ok);if(ok){if(s.add)s.add();$('#out',b).innerHTML=parts.join('');si2++;if(si2===steps.length){end();}else draw2();}else{li.querySelector('.q').textContent=s.q+'   ✗ ลองใหม่';}};r.appendChild(bt);});li.appendChild(r);}
+        else if(i<si2)li.insertAdjacentHTML('beforeend',' <b style="color:var(--ok)">→ '+esc(s.a)+'</b>');ol.appendChild(li);});}
+      function end(){draw2();var sent=it.s+' '+it.be+' '+it.v3+' by '+it.ag+'.';var r=el('div','row','<button class="btn ghost" type="button" id="sp">🔊 ฟังประโยค</button><button class="btn" type="button" id="nx">'+(idx<L.convert.length-1?'ประโยคถัดไป →':'สถานีถัดไป →')+'</button>');b.appendChild(r);$('#sp',b).onclick=function(){speak(sent);};$('#nx',b).onclick=function(){if(idx<L.convert.length-1){idx++;b.innerHTML='';run();}else{fin(3);si=4;nav();draw();window.scrollTo(0,0);}};}
+      draw2();}
+    run();};
+  V[4]=function(b){var mode='A';
+    function paint(){b.innerHTML='';hd(b,4,'Build the Sentence','ตัวช่วยค่อยๆ ลดลง A → D สร้างประโยค passive จากประโยค active ที่กำหนด');var mn=el('div','mini');
+      [['A','ลากบล็อก'],['B','เลือกคำ'],['C','พิมพ์+ใบ้'],['D','พิมพ์เอง']].forEach(function(m){var bt=el('button','',m[0]+' '+m[1]);bt.type='button';if(m[0]===mode)bt.setAttribute('aria-current','true');bt.onclick=function(){mode=m[0];paint();};mn.appendChild(bt);});b.appendChild(mn);
+      var bd=el('div');b.appendChild(bd);M[mode](bd);var r=el('div','row','<button class="btn" type="button">ไปสถานีสุดท้าย →</button>');r.firstChild.onclick=function(){fin(4);si=5;nav();draw();window.scrollTo(0,0);};b.appendChild(r);}
+    var M={};
+    M.A=function(bd){var d=L.build.A,want=d.words,got=[],bank=shuf(want);while(bank.join()===want.join())bank=shuf(want);
+      bd.innerHTML='<p>Active: <b>'+esc(d.act)+'</b></p><div class="slots" id="sl"></div><div id="bk"></div><div class="row"><button class="btn ghost" type="button" id="rs">เริ่มใหม่</button></div>';var f=fbk(bd);
+      function p(){var sl=$('#sl',bd);sl.innerHTML='';if(!got.length)sl.innerHTML='<span class="slot" style="min-width:160px">แตะคำตามลำดับ</span>';got.forEach(function(w){sl.appendChild(el('span','blk X',esc(w)));});var bk=$('#bk',bd);bk.innerHTML='';
+        bank.forEach(function(w,wi){var bt=el('button','blk X',esc(w));bt.type='button';bt.disabled=got.indexOf(w)>-1;bt.onclick=function(){got.push(w);p();if(got.length===want.length){var ok=got.join(' ')===want.join(' ');first(K('bA'),ok);f(ok?'ถูก! '+want.join(' '):'ยังไม่ถูก กด "เริ่มใหม่"',ok);if(ok)speak(want.join(' '));}};bk.appendChild(bt);});}
+      $('#rs',bd).onclick=function(){got=[];p();f('',true);};p();};
+    M.B=function(bd){var d=L.build.B;bd.innerHTML='<p>Active: <b>'+esc(d.act)+'</b></p><div class="row"><b>'+esc(d.pre)+'</b><select id="b1" aria-label="be"><option value="">be?</option>'+shuf(d.s1.opts).map(function(o){return '<option>'+esc(o)+'</option>';}).join('')+'</select><select id="b2" aria-label="verb"><option value="">V?</option>'+shuf(d.s2.opts).map(function(o){return '<option>'+esc(o)+'</option>';}).join('')+'</select><b>'+esc(d.post)+'</b></div><div class="row"><button class="btn" type="button" id="cb">Check</button></div>';var f=fbk(bd);
+      $('#cb',bd).onclick=function(){var ok=$('#b1',bd).value===d.s1.ans&&$('#b2',bd).value===d.s2.ans;first(K('bB'),ok);f(ok?'ถูก! '+d.full:'ยังไม่ถูก ดูประธานใหม่และรูปกริยาให้ตรง Tense',ok);if(ok)speak(d.full);};};
+    function hint(ans){return ans.replace(/[.]/g,'').split(' ').map(function(w){return w.charAt(0)+new Array(w.length).join('_');}).join('  ')+'.';}
+    M.C=function(bd){var d=L.build.C;bd.innerHTML='<p>Active: <b>'+esc(d.act)+'</b></p><p class="th" style="font-family:var(--mono)">ใบ้: '+esc(hint(d.ans))+'</p><input type="text" id="tc" aria-label="passive sentence" autocomplete="off"><div class="row"><button class="btn" type="button" id="cc">Check</button></div>';var f=fbk(bd);
+      $('#cc',bd).onclick=function(){var ok=match($('#tc',bd).value,[d.ans]);first(K('bC'),ok);f(ok?'ถูก! '+d.ans:'ยังไม่ถูก ลองเช็ค: ประธานใหม่ + be + V3 + by',ok);if(ok)speak(d.ans);};};
+    M.D=function(bd){var d=L.build.D;bd.innerHTML='<p>Active: <b>'+esc(d.act)+'</b></p><p class="th">ไม่มีตัวช่วย พิมพ์ประโยค passive เอง</p><input type="text" id="td" aria-label="passive sentence" autocomplete="off"><div class="row"><button class="btn" type="button" id="cd">Check</button></div>';var f=fbk(bd);
+      $('#cd',bd).onclick=function(){var ok=match($('#td',bd).value,[d.ans]);first(K('bD'),ok);f(ok?'ถูก! '+d.ans:'ยังไม่ถูก ลองเช็คสูตรของ '+L.short,ok);if(ok)speak(d.ans);};};
+    paint();};
+  V[5]=function(b){hd(b,5,'Error Detective','แต่ละประโยคมีจุดผิด 1 อย่าง เลือกว่าผิดเรื่องอะไร');var left=L.detect.items.length;
+    L.detect.items.forEach(function(q,qi){var d=el('div','pair','<div><b>ข้อ '+(qi+1)+'</b><span class="det">'+q.t+'</span></div><div class="row" id="o'+qi+'"></div><p class="fb" id="f'+qi+'" aria-live="polite"></p>');b.appendChild(d);
+      L.detect.opts.forEach(function(o,oi){var bt=el('button','blk X',esc(o));bt.type='button';bt.onclick=function(){var ok=oi===q.a;first(K('dt'+qi),ok);var f=$('#f'+qi,b);if(ok){f.className='fb ok';f.textContent='ถูก! แก้เป็น: '+q.fix;$('#o'+qi,b).querySelectorAll('button').forEach(function(x){x.disabled=true;});left--;if(!left){fin(5);nav();b.appendChild(el('p','fb ok','🎉 จบ Level '+L.n+' ได้ '+scoreOf(L.id)+' / '+maxOf(L)+' คะแนน'));nextBtn(b,L.n<5?'ไป Level '+(L.n+1)+' →':'ไปด่าน Boss →');}}else{f.className='fb bad';f.textContent='ยังไม่ใช่ ลองใหม่';}};$('#o'+qi,b).appendChild(bt);});});};
+  function draw(){var b=$('#stn');b.innerHTML='';V[si](b);}
+  nav();draw();
+}
+
+/* ---------- boss ---------- */
+function boss(){var i=0,w=el('div');app.appendChild(w);
+  function q(){var it=BOSS[i];w.innerHTML='<div class="crumb"><a href="#home">← Home</a></div><span class="eyebrow">Boss · '+(i+1)+' / '+BOSS.length+'</span><h1 class="lh">Mixed Tenses</h1><div class="belt"></div><section class="card"><span class="tag">'+esc(it.tn)+'</span><h2>เปลี่ยนเป็น passive</h2><p class="th">พิมพ์ประโยค passive ให้ตรง Tense ที่บอก (ใส่ by + ผู้กระทำหรือไม่ใส่ก็ได้)</p><p style="font:700 20px var(--disp)">'+esc(it.a)+'</p><input type="text" id="bi" aria-label="passive sentence" autocomplete="off"><div class="row"><button class="btn" type="button" id="bc">Check</button></div><p class="fb" id="bf" aria-live="polite"></p></section><div id="hp"></div>';
+    $('#hp').appendChild(helpPanel());
+    $('#bc').onclick=function(){var ok=match($('#bi').value,it.ans);first('B.'+i,ok);var f=$('#bf');f.className='fb '+(ok?'ok':'bad');f.textContent=ok?'ถูก! '+it.ans[0]:'เฉลย: '+it.ans[0];if(ok)speak(it.ans[0]);$('#bc').disabled=true;$('#bi').disabled=true;
+      var r=el('div','row','<button class="btn" type="button">'+(i<BOSS.length-1?'ข้อถัดไป →':'ดู Score Report →')+'</button>');r.firstChild.onclick=function(){if(i<BOSS.length-1){i++;q();}else{S.done.B=true;save();location.hash='#score';}};f.parentNode.appendChild(r);};}
+  q();}
+
+/* ---------- score ---------- */
+function score(){var t=totals(),pct=t.max?Math.round(t.got*100/t.max):0,w=el('div');app.appendChild(w);
+  var rows=LV.map(function(L){var g=scoreOf(L.id),m=maxOf(L);return '<div class="srow"><span>L'+L.n+' · '+esc(L.short)+'</span><div class="bar"><i style="width:'+Math.round(g*100/m)+'%"></i></div><b>'+g+'/'+m+'</b></div>';}).join('')+'<div class="srow"><span>Boss · Mixed</span><div class="bar"><i style="width:'+Math.round(scoreOf('B')*100/BOSS.length)+'%"></i></div><b>'+scoreOf('B')+'/'+BOSS.length+'</b></div>';
+  w.innerHTML='<div class="crumb"><a href="#home">← Home</a></div><section class="card report" id="report"><div class="rtop"><div><span class="tag">Passive Factory · อ23102</span><h2>Score Report</h2></div><span class="stamp">'+esc(stamp())+'</span></div><div class="rwho"><label class="field wide">Name<input type="text" id="sn" maxlength="60"></label><label class="field">Class<input type="text" id="sc" maxlength="12"></label><label class="field">No.<input type="number" id="so" min="1" max="99"></label></div><div class="big"><span>'+t.got+'</span><small>/'+t.max+' · '+pct+'%</small></div><p class="rk"><b>'+rank(pct)+'</b>'+(pct>=80?' · ✓ ผ่านเกณฑ์ (80%)':' · ยังไม่ถึงเกณฑ์ 80%')+'</p>'+rows+'<p class="soft" style="margin:10px 0 0">ใช้ตัวช่วย (เปิดตารางสูตรในด่าน) '+(S.help||0)+' ครั้ง</p></section>'+
+   '<div class="card"><h3>ส่งครูอย่างไร</h3><p class="soft" style="margin:0">แคปหน้าการ์ด Score Report ให้เห็นชื่อ คะแนนรวม และวันเวลา แล้วส่งตามที่ครูกำหนด</p></div><div class="card"><h3>คัดลอกสรุปคะแนน</h3><button class="btn ghost" type="button" id="cp">Copy summary</button> <span class="hint" id="cpm"></span></div><div class="card"><h3>เริ่มใหม่</h3><p class="soft" style="margin:0 0 10px">ลบคำตอบและคะแนนทั้งหมดในเครื่องนี้ (ถ้าใช้เครื่องร่วมกัน ให้กดก่อนเปลี่ยนคน)</p><div id="rs"><button class="btn ghost" type="button" id="r1">Reset all</button></div></div>';
+  $('#sn').value=S.name;$('#sc').value=S.cls;$('#so').value=S.no;
+  ['sn','sc','so'].forEach(function(id){$('#'+id).addEventListener('input',function(){S.name=$('#sn').value;S.cls=$('#sc').value;S.no=$('#so').value;save();paintTop();});});
+  $('#cp').onclick=function(){var txt='Passive Factory · '+S.name+' ('+S.cls+' เลขที่ '+S.no+') · '+t.got+'/'+t.max+' ('+pct+'%) · '+stamp();var ok=function(){$('#cpm').textContent='คัดลอกแล้ว';};try{navigator.clipboard.writeText(txt).then(ok,function(){fall(txt);});}catch(e){fall(txt);}};
+  function fall(txt){var ta=el('textarea');ta.value=txt;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');$('#cpm').textContent='คัดลอกแล้ว';}catch(e){$('#cpm').textContent=txt;}ta.remove();}
+  $('#r1').onclick=function(){$('#rs').innerHTML='<p class="fb bad">ลบคะแนนทั้งหมดจริงหรือไม่?</p><div class="row"><button class="btn" type="button" id="r2">ยืนยัน ลบเลย</button><button class="btn ghost" type="button" id="r3">ยกเลิก</button></div>';$('#r2').onclick=function(){store.del(KEY);S={name:'',cls:'',no:'',keys:{},done:{},help:0};location.hash='#home';route();};$('#r3').onclick=function(){score_reset();};};
+  function score_reset(){app.innerHTML='';score();}
+}
+window.__pf={LV:LV,BOSS:BOSS};
+route();
+})();
+
+</script>
+</body>
+</html>
